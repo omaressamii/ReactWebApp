@@ -247,7 +247,7 @@ export const updateAssetPrintData = createAsyncThunk(
   'assetInventoryLocationSlice/updateAssetPrintData',
   async (data: any, { rejectWithValue }) => {
     try {
-      const response = await apiService.putByEndpoint('ASSET_INVENTORY_LOCATION', 'PRINT_DATA', data);
+      const response = await apiService.postByEndpoint('ASSET_INVENTORY_LOCATION', 'PRINT_DATA', data);
 
       if (response.status === 1) {
         return { message: response.message || 'Asset print data updated successfully' };
@@ -264,12 +264,12 @@ export const updateAssetPrintDataInquiry = createAsyncThunk(
   'assetInventoryLocationSlice/updateAssetPrintDataInquiry',
   async (data: any, { rejectWithValue }) => {
     try {
-      const response = await apiService.putByEndpoint('ASSET_INVENTORY_LOCATION', 'PRINT_DATA_INQUIRY', data);
+      const response = await apiService.postByEndpoint('ASSET_INVENTORY_LOCATION', 'PRINT_DATA_INQUIRY', data);
 
       if (response.status === 1) {
-        return { message: response.message || 'Asset print data inquiry updated successfully' };
+        return { message: response.message || 'Asset print data updated successfully' };
       } else {
-        return rejectWithValue({ error: response.message || 'Failed to update print data inquiry' });
+        return rejectWithValue({ error: response.message || 'Failed to update print data' });
       }
     } catch (error: any) {
       return rejectWithValue({ error: error.message });
@@ -281,7 +281,7 @@ export const updateAssetInquiryDetails = createAsyncThunk(
   'assetInventoryLocationSlice/updateAssetInquiryDetails',
   async (data: any, { rejectWithValue }) => {
     try {
-      const response = await apiService.putByEndpoint('ASSET_INVENTORY_LOCATION', 'INQUIRY_DETAILS', data);
+      const response = await apiService.postByEndpoint('ASSET_INVENTORY_LOCATION', 'INQUIRY_DETAILS', data);
 
       if (response.status === 1) {
         return { message: response.message || 'Asset inquiry details updated successfully' };

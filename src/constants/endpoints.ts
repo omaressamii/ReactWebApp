@@ -67,7 +67,7 @@ export const API_ENDPOINTS = {
     GLOBAL: '/search',
     PERSON: '/search/getPerson',
     PART: '/search/getPart',
-    ASSETS: '/search/assets',
+    ASSETS: '/search/findAsset',
     WORK_ORDERS: '/search/work-orders',
     REQUISITIONS: '/search/requisitions',
   },
@@ -96,6 +96,10 @@ export const API_ENDPOINTS = {
 
   // Issue Returns
   ISSUE_RETURN: {
+    MAKE_PART_ISSUE: '/issueReturn/MakePartIssue',
+    MAKE_PART_RETURN: '/issueReturn/MakePartReturn',
+    GET_ASSET: '/issueReturn/getAsset',
+    // Legacy endpoints for future use
     LIST: '/issue-returns',
     CREATE: '/issue-returns',
     UPDATE: '/issue-returns/:id',
@@ -117,16 +121,16 @@ export const API_ENDPOINTS = {
 
   // Asset Inventory Location
   ASSET_INVENTORY_LOCATION: {
-    SESSIONS: '/asset-inventory/sessions',
-    CREATE_SESSION: '/asset-inventory/sessions',
-    SESSION_DETAILS: '/asset-inventory/sessions/:id',
-    UPDATE_LOCATION: '/asset-inventory/locations',
-    DEPARTMENTS: '/asset-inventory/departments',
-    ASSETS: '/asset-inventory/assets',
-    ADD_TO_LIST: '/asset-inventory/list',
-    PRINT_DATA: '/asset-inventory/print-data',
-    PRINT_DATA_INQUIRY: '/asset-inventory/print-data-inquiry',
-    INQUIRY_DETAILS: '/asset-inventory/inquiry-details',
+    SESSIONS: '/assetInventory/getSessionsAssetInventoryLocation',
+    CREATE_SESSION: '/assetInventory/CreateAssetInventorySessionLocation',
+    SESSION_DETAILS: '/assetInventory/getSessionAssetInventoryLocation',
+    UPDATE_LOCATION: '/assetInventory/updateAssetsInventoryLocation',
+    DEPARTMENTS: '/assetInventory/getLocationDepartments',
+    ASSETS: '/assetInventory/getAssetsInventoryLocation',
+    ADD_TO_LIST: '/assetInventory/AssetToListLocation',
+    PRINT_DATA: '/assetInventory/updateAssetPrintData',
+    PRINT_DATA_INQUIRY: '/assetInventory/updateAssetPrintDataInquiry',
+    INQUIRY_DETAILS: '/assetInventory/updateAssetInquiryDetails',
   },
 
   // Offline Sync

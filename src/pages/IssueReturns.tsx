@@ -1,158 +1,335 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { RotateCcw, Search, Calendar, Package } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RotateCcw, AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useAppSelector, useAppDispatch } from '@/redux/hooks';
+import { resetMakePartIssue, resetMakePartReturn, makePartIssue, makePartReturn, resetGetAsset } from '@/redux/slices/issueReturnSlice';
 
-interface IssueReturn {
-  id: string;
-  originalIssueId: string;
-  assetName: string;
-  returnedBy: string;
-  receivedBy: string;
-  location: string;
-  quantity: number;
-  condition: 'good' | 'damaged' | 'needs-repair';
-  status: 'completed' | 'pending' | 'inspecting';
-  returnDate: string;
-  notes: string;
+// Import our new components
+import OperationSelector from '@/components/issue-return/OperationSelector';
+import AssetLookup from '@/components/issue-return/AssetLookup';
+import StoreLocationSelector from '@/components/issue-return/StoreLocationSelector';
+
+interface StoreLocationOption {
+  option: string;
+  value: string;
+  organization: string;
+  description: string;
 }
 
-const mockReturns: IssueReturn[] = [
-  {
-    id: 'RET-001',
-    originalIssueId: 'ISS-003',
-    assetName: 'HP EliteBook 840',
-    returnedBy: 'Alice Cooper',
-    receivedBy: 'IT Admin',
-    location: 'Central Warehouse',
-    quantity: 1,
-    condition: 'good',
-    status: 'completed',
-    returnDate: '2025-01-23T15:00:00Z',
-    notes: 'Device in excellent condition, all accessories included',
-  },
-  {
-    id: 'RET-002',
-    originalIssueId: 'ISS-005',
-    assetName: 'Logitech Webcam',
-    returnedBy: 'Bob Martin',
-    receivedBy: 'Sarah Wilson',
-    location: 'Building A Store',
-    quantity: 1,
-    condition: 'needs-repair',
-    status: 'inspecting',
-    returnDate: '2025-01-24T10:30:00Z',
-    notes: 'Camera lens appears scratched, requires inspection',
-  },
-];
-
-const statusColors = {
-  completed: 'bg-status-completed text-success-foreground',
-  pending: 'bg-status-pending text-warning-foreground',
-  inspecting: 'bg-status-inprogress text-primary-foreground',
-};
-
-const conditionColors = {
-  good: 'border-success',
-  damaged: 'border-destructive',
-  'needs-repair': 'border-warning',
-};
-
 export default function IssueReturns() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [returns] = useState<IssueReturn[]>(mockReturns);
+  const dispatch = useAppDispatch();
 
-  const filteredReturns = returns.filter(ret =>
-    ret.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ret.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ret.originalIssueId.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Redux state
+  const userState = useAppSelector((state) => state.user);
+  const issueReturnState = useAppSelector((state) => state.issueReturn);
+
+  // Local state
+  const [selectedOperation, setSelectedOperation] = useState<'ISSUE' | 'RETURN' | null>(null);
+  const [assetCode, setAssetCode] = useState('');
+  const [selectedStore, setSelectedStore] = useState<StoreLocationOption | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<StoreLocationOption | null>(null);
+  const [operationMismatchError, setOperationMismatchError] = useState<string | null>(null);
+  const [locationStatusError, setLocationStatusError] = useState<string | null>(null);
+
+  // Get current asset from Redux state
+  const asset = issueReturnState.getAsset?.[0];
+
+  // Validate operation type matches asset's transaction type (like Expo app)
+  useEffect(() => {
+    if (asset && selectedOperation) {
+      const assetTransactionType = asset.OBJ_TRAN_TYPE;
+      console.log('🔍 [Validation] Asset OBJ_TRAN_TYPE:', assetTransactionType, 'Selected operation:', selectedOperation);
+
+      if (selectedOperation !== assetTransactionType) {
+        const errorMessage = `Operation mismatch: Selected ${selectedOperation} but asset requires ${assetTransactionType} operation. Transaction cannot proceed - please select the correct operation type.`;
+        console.log('❌ [Validation] Operation mismatch detected:', errorMessage);
+        setOperationMismatchError(errorMessage);
+        
+        // Clear the asset to allow selecting a different one (like Expo app)
+        dispatch(resetGetAsset());
+        setAssetCode('');
+        setSelectedStore(null);
+        setSelectedLocation(null);
+      } else {
+        console.log('✅ [Validation] Operation matches asset transaction type');
+        setOperationMismatchError(null);
+      }
+    }
+  }, [asset, selectedOperation, dispatch]);
+
+  // Validate asset location and status (must be in store or location, not in transit)
+  useEffect(() => {
+    if (asset) {
+      const hasValidLocation = asset.OBJ_STORE !== null && asset.OBJ_STORE !== '' || 
+                              asset.OBJ_LOCATION !== null && asset.OBJ_LOCATION !== '';
+      const isNotInTransit = asset.OBJ_STATUS !== 'T';
+      
+      console.log('🔍 [Location Validation] Asset location check:', {
+        objStore: asset.OBJ_STORE,
+        objLocation: asset.OBJ_LOCATION,
+        objStatus: asset.OBJ_STATUS,
+        hasValidLocation,
+        isNotInTransit
+      });
+      
+      if (!hasValidLocation || !isNotInTransit) {
+        let errorMessage = 'Asset location/status validation failed: ';
+        if (!hasValidLocation) {
+          errorMessage += 'Asset must be in a Store or Location. ';
+        }
+        if (!isNotInTransit) {
+          errorMessage += 'Asset is in transit and cannot be processed. ';
+        }
+        console.log('❌ [Location Validation] Asset invalid:', errorMessage);
+        setLocationStatusError(errorMessage);
+        
+        // Clear the asset to prevent invalid transactions
+        dispatch(resetGetAsset());
+        setAssetCode('');
+        setSelectedStore(null);
+        setSelectedLocation(null);
+      } else {
+        console.log('✅ [Location Validation] Asset is in valid location and status');
+        setLocationStatusError(null);
+      }
+    }
+  }, [asset, dispatch]);
+
+  // Validation
+  const isFormValid = () => {
+    if (!selectedOperation || !asset) return false;
+    if (locationStatusError) return false; // Prevent submission when asset is in invalid location/status
+    if (operationMismatchError) return false; // Prevent submission when operation doesn't match asset type
+    
+    // Allow submission even with operation mismatch since backend overrides OBJ_TRAN_TYPE
+
+    if (selectedOperation === 'ISSUE') {
+      return !!(selectedStore?.value && selectedLocation?.value);
+    } else {
+      return !!(selectedStore?.value && selectedLocation?.value);
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = () => {
+    if (!isFormValid() || !asset) return;
+
+    // Prepare request data matching backend expectations
+    const requestData = {
+      user: userState.user,
+      part: {
+        ...asset,
+        OBJ_TRAN_TYPE: selectedOperation, // Override with selected operation (like Expo app)
+        OBJ_LOCATION: selectedLocation?.value,
+        LOC_DESC: selectedLocation?.description,
+        OBJ_STORE: selectedStore?.value,
+        STR_DESC: selectedStore?.description,
+        STR_ORG: selectedStore?.organization,
+        LOC_ORG: selectedLocation?.organization,
+      },
+    };
+
+    // Replace null values for OBJ_BIN and OBJ_LOT with '*' to allow successful processing
+    if (requestData.part.OBJ_BIN == null || requestData.part.OBJ_BIN === '') {
+      requestData.part.OBJ_BIN = '*';
+    }
+    if (requestData.part.OBJ_LOT == null || requestData.part.OBJ_LOT === '') {
+      requestData.part.OBJ_LOT = '*';
+    }
+
+    // Dispatch the appropriate action based on selectedOperation
+    if (selectedOperation === 'ISSUE') {
+      dispatch(makePartIssue(requestData));
+    } else {
+      dispatch(makePartReturn(requestData));
+    }
+  };
+
+  // Handle operation change - reset form
+  const handleOperationChange = (operation: 'ISSUE' | 'RETURN') => {
+    setSelectedOperation(operation);
+    // Reset form when operation changes
+    setAssetCode('');
+    setSelectedStore(null);
+    setSelectedLocation(null);
+    setOperationMismatchError(null);
+    setLocationStatusError(null);
+    dispatch(resetMakePartIssue());
+    dispatch(resetMakePartReturn());
+    dispatch(resetGetAsset());
+  };
+
+  // Check if user has permission for Issue Return Parts
+  const hasPermission = () => {
+    // TODO: Implement proper permission checking based on user role and screens
+    return userState.isAuthenticated;
+  };
+
+  if (!hasPermission()) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            You do not have permission to access Issue Return Parts.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Issue Returns</h1>
-          <p className="text-muted-foreground mt-1">Process returned assets and equipment</p>
+          <h1 className="text-3xl font-bold">Issue Return Parts</h1>
+          <p className="text-muted-foreground mt-1">
+            Process asset issue and return transactions between stores and locations
+          </p>
         </div>
-        <Button className="gradient-primary shadow-glow">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setSelectedOperation(null);
+            setAssetCode('');
+            setSelectedStore(null);
+            setSelectedLocation(null);
+            dispatch(resetMakePartIssue());
+            dispatch(resetMakePartReturn());
+          }}
+        >
           <RotateCcw className="w-4 h-4 mr-2" />
-          Process Return
+          Reset
         </Button>
       </div>
 
-      {/* Search */}
-      <Card className="gradient-card border-border/50">
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search returns..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-input border-border"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Operation Type Selection */}
+      <OperationSelector
+        selectedOperation={selectedOperation}
+        onSelectOperation={handleOperationChange}
+        t={(key: string) => key} // Placeholder translation function
+      />
 
-      {/* Returns List */}
-      <div className="grid grid-cols-1 gap-4">
-        {filteredReturns.map((returnItem) => (
-          <Card 
-            key={returnItem.id} 
-            className={`gradient-card border-l-4 ${conditionColors[returnItem.condition]} hover:shadow-lg transition-all cursor-pointer`}
-          >
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm font-mono text-muted-foreground">{returnItem.id}</span>
-                    <Badge className={statusColors[returnItem.status]}>
-                      {returnItem.status.charAt(0).toUpperCase() + returnItem.status.slice(1)}
-                    </Badge>
-                    <Badge variant="outline">
-                      Original: {returnItem.originalIssueId}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-xl mb-2 flex items-center gap-2">
-                    <Package className="w-5 h-5 text-primary" />
-                    {returnItem.assetName}
+      {/* Main Form - Only show when operation is selected */}
+      {selectedOperation && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column */}
+          <div className="space-y-6">
+            <AssetLookup
+              assetCode={assetCode}
+              setAssetCode={setAssetCode}
+              user={userState.user}
+              selectedOperation={selectedOperation}
+              t={(key: string) => key} // Placeholder translation function
+            />
+
+            {asset && (
+              <StoreLocationSelector
+                selectedOperation={selectedOperation}
+                selectedStore={selectedStore}
+                selectedLocation={selectedLocation}
+                onStoreChange={setSelectedStore}
+                onLocationChange={setSelectedLocation}
+                t={(key: string) => key} // Placeholder translation function
+              />
+            )}
+          </div>
+
+          {/* Right Column - Transaction Summary */}
+          <div className="space-y-6">
+            {asset && (
+              <Card className="gradient-card border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" />
+                    Transaction Summary
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground">{returnItem.notes}</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                <div className="space-y-1">
-                  <span className="text-muted-foreground block">Returned By</span>
-                  <span className="font-medium">{returnItem.returnedBy}</span>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-muted-foreground block">Received By</span>
-                  <span className="font-medium">{returnItem.receivedBy}</span>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-muted-foreground block">Condition</span>
-                  <Badge variant="outline" className="capitalize">
-                    {returnItem.condition.replace('-', ' ')}
-                  </Badge>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    {new Date(returnItem.returnDate).toLocaleDateString()}
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Operation:</span>
+                      <p className="font-medium">{selectedOperation === 'ISSUE' ? 'Issue' : 'Return'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Asset Code:</span>
+                      <p className="font-medium">{asset.OBJ_CODE}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Part Code:</span>
+                      <p className="font-medium">{asset.OBJ_PART}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{selectedOperation === 'ISSUE' ? 'From Store:' : 'From Location:'}</span>
+                      <p className="font-medium">{selectedOperation === 'ISSUE' ? (selectedStore?.description || asset.STR_DESC) : (selectedLocation?.description || asset.LOC_DESC)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{selectedOperation === 'ISSUE' ? 'To Location:' : 'To Store:'}</span>
+                      <p className="font-medium">{selectedOperation === 'ISSUE' ? (selectedLocation?.description || asset.LOC_DESC) : (selectedStore?.description || asset.STR_DESC)}</p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+
+                  {/* Submit Button */}
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!isFormValid() || issueReturnState.makePartIssueLoading || issueReturnState.makePartReturnLoading}
+                    className="w-full gradient-primary"
+                    size="lg"
+                  >
+                    {issueReturnState.makePartIssueLoading || issueReturnState.makePartReturnLoading ? (
+                      'Processing...'
+                    ) : (
+                      'Submit Transaction'
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Status Messages */}
+            {locationStatusError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {locationStatusError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {operationMismatchError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {operationMismatchError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {(issueReturnState.makePartIssueError || issueReturnState.makePartReturnError) && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {issueReturnState.makePartIssueError || issueReturnState.makePartReturnError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {(issueReturnState.makePartIssueIsDone || issueReturnState.makePartReturnIsDone) && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {selectedOperation === 'ISSUE'
+                    ? 'Asset issued successfully'
+                    : 'Asset returned successfully'
+                  }
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -98,6 +98,16 @@ export const SCREENS: ScreenPermission[] = [
     category: 'issues',
   },
   {
+    id: 'issue-return',
+    name: 'Issue / Return',
+    description: 'Issue and return parts between stores',
+    path: '/returns',
+    icon: 'ArrowLeftRight',
+    roles: ['IT', 'Manager', 'Admin'],
+    requiresAuth: true,
+    category: 'issues',
+  },
+  {
     id: 'receipts',
     name: 'Receipts',
     description: 'Manage part receipts',
@@ -249,7 +259,7 @@ export const isScreenAccessible = (userRole: UserRole | null, path: string, user
     // A* = Dashboard/Work Orders, B* = Assets, C* = Inventory/Requisitions, D* = Reports, etc.
     const permissionToCategory: Record<string, string[]> = {
       'A': ['dashboard', 'work-orders'],
-      'B': ['assets', 'issues', 'receipts', 'asset-inquiry'],
+      'B': ['assets', 'issues', 'receipts', 'asset-inquiry', 'issue-return'],
       'C': ['inventory', 'requisitions', 'location-inventory', 'arrangements'],
       'D': ['reports'],
       'E': ['admin'],
@@ -288,7 +298,7 @@ export const getNavigationMenu = (userRole: UserRole | null, userPermissions?: s
     // Map permission codes to screen access
     const permissionToCategory: Record<string, string[]> = {
       'A': ['dashboard', 'work-orders'],
-      'B': ['assets', 'issues', 'receipts', 'asset-inquiry'],
+      'B': ['assets', 'issues', 'receipts', 'asset-inquiry', 'issue-return'],
       'C': ['inventory', 'requisitions', 'location-inventory', 'arrangements'],
       'D': ['reports'],
       'E': ['admin'],

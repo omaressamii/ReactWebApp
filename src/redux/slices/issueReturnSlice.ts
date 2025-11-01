@@ -3,11 +3,20 @@ import apiService from '../../services/api';
 
 // Types
 interface Asset {
-  id: string;
-  code: string;
-  name: string;
-  location: string;
-  // Add other asset properties as needed
+  OBJ_CODE: string;
+  OBJ_PART: string;
+  OBJ_BIN: string;
+  OBJ_LOT: string;
+  OBJ_STORE: string;
+  OBJ_LOCATION: string;
+  OBJ_TRAN_TYPE: string;
+  OBJ_STATUS: string;
+  STR_DESC: string;
+  LOC_DESC: string;
+  STR_ORG: string;
+  LOC_ORG: string;
+  _USERCLASS?: string;
+  TEMP?: string;
 }
 
 interface IssueReturnState {
@@ -46,7 +55,7 @@ export const makePartIssue = createAsyncThunk(
   'issueReturn/makePartIssue',
   async (request: any, { rejectWithValue }) => {
     try {
-      const response = await apiService.postByEndpoint('ISSUE_RETURN', 'CREATE', request);
+      const response = await apiService.postByEndpoint('ISSUE_RETURN', 'MAKE_PART_ISSUE', request);
 
       if (response.status === 1 && response.data) {
         return { status: 1, message: 'Part issue created successfully' };
@@ -63,7 +72,7 @@ export const makePartReturn = createAsyncThunk(
   'issueReturn/makePartReturn',
   async (request: any, { rejectWithValue }) => {
     try {
-      const response = await apiService.postByEndpoint('ISSUE', 'RETURN', request);
+      const response = await apiService.postByEndpoint('ISSUE_RETURN', 'MAKE_PART_RETURN', request);
 
       if (response.status === 1 && response.data) {
         return { status: 1, message: 'Part return created successfully' };
@@ -80,12 +89,12 @@ export const getAsset = createAsyncThunk(
   'issueReturn/getAsset',
   async (request: any, { rejectWithValue }) => {
     try {
-      const response = await apiService.getByEndpoint('DEVICE', 'BARCODE_LOOKUP', { code: request.assetCode });
+      const response = await apiService.postByEndpoint('ISSUE_RETURN', 'GET_ASSET', request);
 
-      if (response.status === 1 && response.data) {
-        return { status: 1, asset: response.data };
+      if (response.status === 1 && response.asset) {
+        return { status: 1, asset: response.asset };
       } else {
-        return rejectWithValue({ error: response.message || 'Failed to fetch asset' });
+        return rejectWithValue({ error: response.error || 'Failed to fetch asset' });
       }
     } catch (error: any) {
       return rejectWithValue({ error: error.message || 'Failed to fetch asset' });

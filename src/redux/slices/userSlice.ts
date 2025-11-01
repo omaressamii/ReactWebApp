@@ -21,6 +21,7 @@ interface User {
   USR_GROUP?: string;
   userOrganizations?: any[];
   userStores?: any[];
+  userLocations?: any[];
   // InFor ERP authentication fields (required for workOrder.inforLogin)
   user_code_infor?: string;
   user_password_infor?: string;
@@ -189,6 +190,7 @@ const userSlice = createSlice({
           USR_GROUP: backendUser.USR_GROUP,
           userOrganizations: backendUser.userOrganizations,
           userStores: backendUser.userStores,
+          userLocations: backendUser.userLocations,
           // Include InFor ERP authentication fields
           user_code_infor: backendUser.user_code_infor,
           user_password_infor: backendUser.user_password_infor,

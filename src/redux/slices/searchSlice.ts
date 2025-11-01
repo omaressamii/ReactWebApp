@@ -198,7 +198,7 @@ export const findAsset = createAsyncThunk(
         assetCode: search.assetCode
       });
 
-      const response = await apiService.getByEndpoint('SEARCH', 'ASSETS', { q: search.assetCode });
+      const response = await apiService.postByEndpoint('SEARCH', 'ASSETS', { assetCode: search.assetCode });
 
       if (response.status === 1 && response.asset) {
         console.log('✅ [Redux.findAsset] Asset search successful', {
